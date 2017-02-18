@@ -1,4 +1,4 @@
-function [species, fluxes] = matlab_export_dynamics(m, con, t, name, opts)
+function [species, fluxes, stoich] = matlab_export_dynamics(m, con, t, name, opts)
 % Simulate model+experiment and write out files for visualizer. Also
 % returns species concs and fluxes for convenience.
 %
@@ -21,12 +21,16 @@ function [species, fluxes] = matlab_export_dynamics(m, con, t, name, opts)
 %       Species concs over time
 %   fluxes [ nx+nu x nr x nt double matrix ]
 %       Reaction fluxes in to/out of each species for each reaction over time
+%   stoich [ nx+nu x nr sparse double matrix ]
+%       Stoichiometry matrix
 %
 % Side Effects:
 %   Outputs 1 csv data file for each time
 %   where the 1st col is the species conc and the subsequent cols are the
-%   fluxes of each species thru each rxn. Also outputs 1 json file for
-%   metadata. csv data files are indexed by time index.
+%   fluxes of each species thru each rxn. Outputs 1 json file for
+%   metadata. csv data files are indexed by time index. Outputs 1 json file
+%   for the stoichiometry matrix in sparse form, which is needed to
+%   represent all reactions, including those w/ 0 flux at some points.
 
 if nargin < 5
     opts = [];
@@ -76,6 +80,15 @@ meta.reactions = {m.Reactions.Name};
 meta.times = t; % must be a row vector
 
 savejson('', meta, metaFile);
+
+% Write stoichiometry matrix
+stoichFile = [dirName 'stoich.json'];
+
+stoich = [];
+stoich.stoich = m.S;
+
+savejson('', stoich, stoichFile);
+
 
 end
 
