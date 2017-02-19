@@ -29,6 +29,8 @@ function [ output_args ] = matlab_export_dot(directory, opts)
 %           or just generate dot files.
 %       .PlotFiletype [ {'pdf'} | 'png' | ... ]
 %           Plot filetype that Graphviz supports.
+%       .PlotFunction [ {'neato'} | 'dot' | ... ]
+%           Graphviz plot executable
 if nargin < 2
     opts = [];
 end
@@ -42,6 +44,7 @@ opts_.LogscaleNodeSize = false;
 opts_.LogscaleEdgeWidth = false;
 opts_.MakePlots = true;
 opts_.PlotFiletype = 'pdf';
+opts_.PlotFunction = 'neato';
 opts = mergestruct(opts_, opts); % this is included in kroneckerbio
 
 % Check inputs
@@ -59,6 +62,7 @@ meta = loadjson(metaFile);
 speciesNames = meta.species;
 reactionNames = meta.reactions;
 times = meta.times;
+cats = meta.cats;
 
 % Load stoichiometry matrix
 stoichFile = [directory 'stoich.csv'];
@@ -181,7 +185,7 @@ for it = 1:nt
         else
             noconc = '';
         end
-        fprintf(fid, '%s [shape=circle,fontsize=%g%s];\n', speciesNames{ix}, conc, noconc);
+        fprintf(fid, '"%s" [shape=circle,fontsize=%g%s];\n', speciesNames{ix}, conc, noconc);
     end
     
     % Make all the reaction/edges
@@ -200,7 +204,7 @@ for it = 1:nt
             else
                 noflux = '';
             end
-            fprintf(fid, '%s -> %s [arrowhead=none,penwidth=%g%s];\n', speciesNames{ind}, reactionNames{ir}, flux, noflux);
+            fprintf(fid, '"%s" -> "%s" [arrowhead=none,penwidth=%g%s];\n', speciesNames{ind}, reactionNames{ir}, flux, noflux);
         end
         
         % Products connected from box with arrow
@@ -214,7 +218,16 @@ for it = 1:nt
             else
                 noflux = '';
             end
-            fprintf(fid, '%s -> %s [penwidth=%g%s];\n', reactionNames{ir}, speciesNames{ind}, flux, noflux);
+            fprintf(fid, '"%s" -> "%s" [penwidth=%g%s];\n', reactionNames{ir}, speciesNames{ind}, flux, noflux);
+        end
+        
+        % Catalytic species - add to reactants and product
+        cat = cats{ir}.x;
+        if cat(1) ~= 0
+            for ic = 1:length(cat)
+                ind = cat(ic);
+                fprintf(fid, '"%s" -> "%s" [arrowhead=none,color=blue];\n', speciesNames{ind}, reactionNames{ir});
+            end
         end
     end
     
@@ -223,7 +236,7 @@ for it = 1:nt
     
     if opts.MakePlots
         outFile = fullfile(opts.OutputDir, sprintf('plot%i.%s', it, opts.PlotFiletype));
-        s = system(['neato -T' opts.PlotFiletype ' ' gvFile ' -o ' outFile]);
+        s = system([opts.PlotFunction ' -T' opts.PlotFiletype ' ' gvFile ' -o ' outFile]);
     end
 end
 

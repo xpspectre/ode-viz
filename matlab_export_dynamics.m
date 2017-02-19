@@ -79,6 +79,30 @@ meta.species = [{m.States.Name}, {m.Inputs.Name}];
 meta.reactions = {m.Reactions.Name};
 meta.times = t; % must be a row vector
 
+% Handle corner case of "catalytic species", which appear in the
+%   same stoichiometry as product and reactant and thus have a 0
+%   entry in the stoichimetry matrix but still need to be included
+% Each reaction will have indices for catalytic species, if present
+cats(nr).x = [];
+stateNames = [strcat({m.States.Compartment}, '.', {m.States.Name}); ...
+    strcat({m.Inputs.Compartment}, '.', {m.Inputs.Name})];
+for ir = 1:nr
+    rNames = m.Reactions(ir).Reactants;
+    pNames = m.Reactions(ir).Products;
+    rpNames = intersect(rNames, pNames);
+    nc = length(rpNames);
+    if nc > 0
+        cat = zeros(1,nc);
+        for ic = 1:nc
+            cat(ic) = find(ismember(stateNames, rpNames{ic}));
+        end
+    else
+        cat = 0;
+    end
+    cats(ir).x = cat;
+end
+meta.cats = cats;
+
 savejson('', meta, metaFile);
 
 % Write stoichiometry matrix - coordinate form sparse matrix
