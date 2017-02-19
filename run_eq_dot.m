@@ -15,9 +15,9 @@ reactionNames = meta.reactions;
 times = meta.times;
 
 % Load stoichiometry matrix
-stoichFile = [directory 'stoich.json'];
-stoich = loadjson(stoichFile);
-S = stoich.stoich;
+stoichFile = [directory 'stoich.csv'];
+stoich = csvread(stoichFile);
+S = sparse(stoich(:,1), stoich(:,2), stoich(:,3));
 
 %% Generate dot file for 1st timepoint
 ti = 10;
@@ -36,7 +36,9 @@ assert(nx == length(speciesNames))
 assert(nr == length(reactionNames))
 
 %% Detect presence of Graphviz cmd line executables
-% TODO
+if ~check_graphviz
+    error('run_eq_dot:graphviz_missing', 'Graphviz executables not found')
+end
 
 %% Calculate species ranges
 % Options
@@ -151,6 +153,5 @@ fclose(fid);
 
 %% Run Graphviz
 outFile = [directory 'plot.pdf'];
-s = system(['"C:\Program Files (x86)\Graphviz2.38\bin\neato.exe" -Tpdf ' gvFile ' -o ' outFile]);
-
+s = system(['neato -Tpdf ' gvFile ' -o ' outFile]);
 

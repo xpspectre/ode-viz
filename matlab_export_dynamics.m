@@ -81,14 +81,9 @@ meta.times = t; % must be a row vector
 
 savejson('', meta, metaFile);
 
-% Write stoichiometry matrix
-stoichFile = [dirName 'stoich.json'];
-
-stoich = [];
-stoich.stoich = m.S;
-
-savejson('', stoich, stoichFile);
-
-
+% Write stoichiometry matrix - coordinate form sparse matrix
+stoichFile = [dirName 'stoich.csv'];
+[i,j,v] = find(m.S);
+csvwrite(stoichFile, [i,j,v]);
 end
 
