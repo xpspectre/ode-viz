@@ -1,4 +1,4 @@
-function [species, fluxes] = matlab_extract_dynamics(m, con, t, opts)
+function [species, fluxes, S] = matlab_extract_dynamics(m, con, t, opts)
 % Simulate model and export components for visualization. States and inputs
 % are combined as [states; inputs]. NOTE: Requires the model be finalized
 % and the model and experiment filled in with the desired parameter values.
@@ -20,6 +20,8 @@ function [species, fluxes] = matlab_extract_dynamics(m, con, t, opts)
 %       Species concs over time
 %   fluxes [ nx+nu x nr x nt double matrix ]
 %       Reaction fluxes in to/out of each species for each reaction over time
+%   S [ nx+nu x nr sparse double matrix ]
+%       Augmented stoichiometry matrix with states and inputs
 
 if nargin < 4
     opts = [];
@@ -42,9 +44,35 @@ species = [x; u];
 
 % Assemble fluxes at each time
 nt = length(t);
-S = m.S; % stoichiometry matrix, [ nx+nu x nr double matrix ] (often denoted N)
+S_ = m.S; % stoichiometry matrix, [ nx+nu x nr double matrix ] (often denoted N)
 r = m.r; % reaction (rates), function (t,x,u) -> [ nr x 1 double vector ] (often denoted v)
-fluxes = zeros(m.nx+m.nu, m.nr, nt);
+
+% Augment stoichiometry matrix with inputs
+%   Kroneckerbio builds a pure S matrix with only states - get the inputs as
+%   well here
+[i,j,v] = find(S_);
+nr = m.nr;
+nx = m.nx;
+nu = m.nu;
+S = sparse(i,j,v,nx+nu,nr);
+inputNames = strcat({m.Inputs.Compartment}, '.', {m.Inputs.Name});
+
+for ir = 1:nr
+    rNames = m.Reactions(ir).Reactants;
+    pNames = m.Reactions(ir).Products;
+    matches = find(ismember(inputNames, rNames));
+    for im = 1:length(matches)
+        ind = matches(im) + nx; % input indexing starts after states
+        S(ind,ir) = S(ind,ir) - 1; % decrement; slow sparse lookup warning is OK
+    end
+    matches = find(ismember(inputNames, pNames));
+    for im = 1:length(matches)
+        ind = matches(im) + nx;
+        S(ind,ir) = S(ind,ir) + 1;
+    end
+end
+
+fluxes = zeros(nx+nu, nr, nt);
 for it = 1:nt
     rti = r(t(it), x(:,it), u(:,it))'; % Reaction rates at t, transposed to match rows of S
     fluxes(:,:,it) = bsxfun(@times, S, rti); % expands down the rows of nx+nu, preserves sparsity of S

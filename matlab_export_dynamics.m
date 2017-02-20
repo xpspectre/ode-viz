@@ -45,7 +45,7 @@ opts = mergestruct(opts_, opts); % this is included in kroneckerbio
 t = reshape(t,1,length(t)); % Make sure this is a row vector
 
 % Get dynamics
-[species, fluxes] = matlab_extract_dynamics(m, con, t, opts);
+[species, fluxes, S] = matlab_extract_dynamics(m, con, t, opts);
 
 % Checks
 nr = size(fluxes,2);
@@ -84,8 +84,8 @@ meta.times = t; % must be a row vector
 %   entry in the stoichimetry matrix but still need to be included
 % Each reaction will have indices for catalytic species, if present
 cats(nr).x = [];
-stateNames = [strcat({m.States.Compartment}, '.', {m.States.Name}); ...
-    strcat({m.Inputs.Compartment}, '.', {m.Inputs.Name})];
+stateNames = [strcat({m.States.Compartment}, '.', {m.States.Name}), ...
+              strcat({m.Inputs.Compartment}, '.', {m.Inputs.Name})];
 for ir = 1:nr
     rNames = m.Reactions(ir).Reactants;
     pNames = m.Reactions(ir).Products;
@@ -103,11 +103,15 @@ for ir = 1:nr
 end
 meta.cats = cats;
 
+% Handle inputs
+%   Each input is true, in case the graph should show those nodes differently
+meta.inputs = [false(1,m.nx), true(1,m.nu)];
+
 savejson('', meta, metaFile);
 
 % Write stoichiometry matrix - coordinate form sparse matrix
 stoichFile = [dirName 'stoich.csv'];
-[i,j,v] = find(m.S);
+[i,j,v] = find(S);
 csvwrite(stoichFile, [i,j,v]);
 end
 

@@ -63,6 +63,7 @@ speciesNames = meta.species;
 reactionNames = meta.reactions;
 times = meta.times;
 cats = meta.cats;
+inputs = meta.inputs;
 
 % Load stoichiometry matrix
 stoichFile = [directory 'stoich.csv'];
@@ -185,7 +186,12 @@ for it = 1:nt
         else
             noconc = '';
         end
-        fprintf(fid, '"%s" [shape=circle,fontsize=%g%s];\n', speciesNames{ix}, conc, noconc);
+        if inputs(ix) % special handling for inputs
+            inputStr = ',color=blue';
+        else
+            inputStr = '';
+        end
+        fprintf(fid, '"%s" [shape=circle,fontsize=%g%s%s];\n', speciesNames{ix}, conc, noconc, inputStr);
     end
     
     % Make all the reaction/edges
