@@ -2,21 +2,18 @@
 clear; close all; clc
 rng('default');
 
-N = 5;
-name = sprintf('_cascade_%i', N);
+name = '_inputs';
 
-directory = [name '_out/'];
-outputDir = [name '_plots/'];
-if ~exist(outputDir, 'dir')
-    mkdir(outputDir);
+if ~exist(name, 'dir')
+    mkdir(name);
 end
 
 buildModel = true;
 
 %% Build or load cached model since model finalization can be expensive
-modelName = '_cascade_model.mat';
+modelName = '_inputs_model.mat';
 if buildModel
-    m = cascade_model(N);
+    m = inputs_model;
     save(modelName)
 else
     loaded = load(modelName);
@@ -28,27 +25,26 @@ end
 %   1. Fast timescale for activation
 %   2. Slower inactivation
 con = experimentInitialValue(m, [], [], [], 'InitialValueExperiment');
-tF = 0.1; % final time
+tF = 1; % final time
 sim = SimulateSystem(m, con, tF);
 
 % Extract states
 t = linspace(0, tF, 100);
-x = sim.x(t);
+y = sim.y(t);
 
 % Plot result
 % figure
-% plot(t, x)
-% legend({m.States.Name}, 'location','best')
+% plot(t, y)
+% legend({m.Outputs.Name}, 'location','best')
 % xlabel('Time')
 % ylabel('Amount')
-% title('Cascade Model Traces')
+% title('Inputs Model Traces')
 
 %% Export components for graph visualization
 t = linspace(0, tF, 10);
 matlab_export_dynamics(m, con, t, name);
 
 opts = [];
-opts.OutputDir = outputDir;
-opts.PlotFunction = 'dot';
+opts.PlotFunction = 'neato';
 
-matlab_export_dot(directory, opts);
+matlab_export_dot(name, opts);

@@ -52,11 +52,8 @@ if opts.LogscaleNodeSize || opts.LogscaleEdgeWidth
     error('Not implemented yet')
 end
 
-% Make JSON functions are available
-check_add_path('jsonlab-1.5');
-
 % Load metadata
-metaFile = [directory 'meta.json'];
+metaFile = fullfile(directory, 'meta.json');
 meta = loadjson(metaFile);
 
 speciesNames = meta.species;
@@ -65,10 +62,13 @@ times = meta.times;
 cats = meta.cats;
 inputs = meta.inputs;
 
+nx = length(speciesNames);
+nr = length(reactionNames);
+
 % Load stoichiometry matrix
-stoichFile = [directory 'stoich.csv'];
+stoichFile = fullfile(directory, 'stoich.csv');
 stoich = csvread(stoichFile);
-S = sparse(stoich(:,1), stoich(:,2), stoich(:,3));
+S = sparse(stoich(:,1), stoich(:,2), stoich(:,3), nx, nr);
 
 %% Specify times to process
 if ischar(opts.tInds) && strcmp(opts.tInds, 'all')
@@ -82,7 +82,7 @@ nt = length(times);
 speciesBounds = zeros(nt,2); % [max,min] for each time
 fluxBounds = zeros(nt,2); % [max,min] for each time
 for it = 1:nt
-    dataFile = [directory 'data' num2str(it) '.csv'];
+    dataFile = fullfile(directory, ['data' num2str(it) '.csv']);
     data = csvread(dataFile);
     species = data(:,1);
     fluxes = data(:,2:end);
@@ -106,6 +106,10 @@ for it = 1:nt
     maxFlux = -Inf;
     minFlux = Inf;
     for ix = 1:nx
+        if all(S(ix,:) == 0)
+            continue
+        end
+        
         mask = S(ix,:) ~= 0;
         maxFlux = max(maxFlux, max(fluxesAbs(ix,mask)));
         minFlux = min(minFlux, min(fluxesAbs(ix,mask)));
@@ -143,7 +147,7 @@ if opts.MakePlots
 end
 
 for it = 1:nt
-    dataFile = [directory 'data' num2str(it) '.csv'];
+    dataFile = fullfile(directory, ['data' num2str(it) '.csv']);
     data = csvread(dataFile);
     species = data(:,1);
     fluxes = data(:,2:end);
@@ -197,7 +201,7 @@ for it = 1:nt
     % Make all the reaction/edges
     %   Note: that flux already includes stoichiometry
     for ir = 1:nr
-        fprintf(fid, '%s [shape=box,fontsize=6,width=0,height=0];\n', reactionNames{ir}); % small box for each rxn name
+        fprintf(fid, '"%s" [shape=box,fontsize=6,width=0,height=0];\n', reactionNames{ir}); % small box for each rxn name
         
         % Reactants connect to box with no arrow
         reactants = find(S(:,ir) < 0);
@@ -210,7 +214,7 @@ for it = 1:nt
             else
                 noflux = '';
             end
-            fprintf(fid, '"%s" -> "%s" [arrowhead=none,penwidth=%g%s];\n', speciesNames{ind}, reactionNames{ir}, flux, noflux);
+            fprintf(fid, '"%s" -> "%s" [arrowhead=none,penwidth=%g%s,splines=curved];\n', speciesNames{ind}, reactionNames{ir}, flux, noflux);
         end
         
         % Products connected from box with arrow
@@ -224,7 +228,7 @@ for it = 1:nt
             else
                 noflux = '';
             end
-            fprintf(fid, '"%s" -> "%s" [penwidth=%g%s];\n', reactionNames{ir}, speciesNames{ind}, flux, noflux);
+            fprintf(fid, '"%s" -> "%s" [penwidth=%g%s,splines=curved];\n', reactionNames{ir}, speciesNames{ind}, flux, noflux);
         end
         
         % Catalytic species - add to reactants and product
@@ -232,7 +236,7 @@ for it = 1:nt
         if cat(1) ~= 0
             for ic = 1:length(cat)
                 ind = cat(ic);
-                fprintf(fid, '"%s" -> "%s" [arrowhead=none,color=blue];\n', speciesNames{ind}, reactionNames{ir});
+                fprintf(fid, '"%s" -> "%s" [arrowhead=none,color=blue,splines=curved];\n', speciesNames{ind}, reactionNames{ir});
             end
         end
     end

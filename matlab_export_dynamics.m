@@ -54,15 +54,14 @@ if ~isempty(opts.ReactionNames)
 end
 
 % Create output directory
-dirName = [name '_out/'];
-if ~exist(dirName, 'dir')
-    mkdir(dirName);
+if ~exist(name, 'dir')
+    mkdir(name);
 end
 
 % Slice and dice data to per-time matrices and save
 [nx, nt] = size(species); % treat states+inputs as just states
 for it = 1:nt
-    dataName_i = [dirName 'data' num2str(it) '.csv'];
+    dataName_i = fullfile(name, ['data' num2str(it) '.csv']);
     data_i = zeros(nx,1+nr);
     data_i(:,1) = species(:,it);
     data_i(:,2:end) = fluxes(:,:,it);
@@ -70,8 +69,7 @@ for it = 1:nt
 end
 
 % Write metadata
-check_add_path('jsonlab-1.5');
-metaFile = [dirName 'meta.json'];
+metaFile = fullfile(name, 'meta.json');
 
 meta = [];
 meta.model_name = m.Name;
@@ -110,7 +108,7 @@ meta.inputs = [false(1,m.nx), true(1,m.nu)];
 savejson('', meta, metaFile);
 
 % Write stoichiometry matrix - coordinate form sparse matrix
-stoichFile = [dirName 'stoich.csv'];
+stoichFile = fullfile(name, 'stoich.csv');
 [i,j,v] = find(S);
 csvwrite(stoichFile, [i,j,v]);
 end
