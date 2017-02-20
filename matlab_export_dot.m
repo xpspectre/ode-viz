@@ -156,9 +156,11 @@ for it = 1:nt
     maxSpecies = speciesBounds(it,1);
     minSpecies = speciesBounds(it,2);
     if minSpecies == maxSpecies % handle corner case of all species the same conc
-        speciesScaled = (species > 0) * midNodeSize_;
+%         speciesScaled = (species > 0) * midNodeSize_;
+        speciesScaled = (species > 0) * maxSpecies;
     else
-        speciesScaled = (maxNodeSize_ - minNodeSize_) * (species - minSpecies) / (maxSpecies - minSpecies) + minNodeSize_;
+%         speciesScaled = (maxNodeSize_ - minNodeSize_) * (species - minSpecies) / (maxSpecies - minSpecies) + minNodeSize_;
+        speciesScaled = (species - minSpecies) / (maxSpecies - minSpecies);
     end
     speciesScaled(species<0) = 0;
     
@@ -167,9 +169,11 @@ for it = 1:nt
     minFlux = fluxBounds(it,2);
     fluxesAbs = abs(fluxes);
     if minFlux == maxFlux % Handle corner case of all fluxes the same
-        fluxesScaled = (fluxes ~= 0) * midEdgeWidth_;
+%         fluxesScaled = (fluxes ~= 0) * midEdgeWidth_;
+        fluxesScaled = (fluxes ~= 0) * 1;
     else
-        fluxesScaled = (maxEdgeWidth_ - minEdgeWidth_) * (fluxesAbs - minFlux) / (maxFlux - minFlux) + minEdgeWidth_;
+%         fluxesScaled = (maxEdgeWidth_ - minEdgeWidth_) * (fluxesAbs - minFlux) / (maxFlux - minFlux) + minEdgeWidth_;
+        fluxesScaled = (fluxesAbs - minFlux) / (maxFlux - minFlux);
     end
     fluxesScaled(fluxesScaled<0) = 0;
     
@@ -184,9 +188,10 @@ for it = 1:nt
     % First make all the species/nodes
     for ix = 1:nx
         conc = speciesScaled(ix);
-        if conc <= 0 % special handling for 0 species conc
+        
+        if conc < minSpecies % special handling for 0 species conc
             noconc = ',style=dotted';
-            conc = minNodeSize_;
+            conc = minSpecies;
         else
             noconc = '';
         end
@@ -195,7 +200,11 @@ for it = 1:nt
         else
             inputStr = '';
         end
-        fprintf(fid, '"%s" [shape=circle,fontsize=%g%s%s];\n', speciesNames{ix}, conc, noconc, inputStr);
+        
+        % Scale conc to node size
+        nodeSize = (maxNodeSize_ - minNodeSize_) * conc + minNodeSize_;
+        
+        fprintf(fid, '"%s" [shape=circle,fontsize=%g%s%s];\n', speciesNames{ix}, nodeSize, noconc, inputStr);
     end
     
     % Make all the reaction/edges
@@ -208,13 +217,17 @@ for it = 1:nt
         for i = 1:length(reactants)
             ind = reactants(i);
             flux = fluxesScaled(ind,ir);
-            if flux <= 0 % special handling for 0 flux
+            if flux < minFlux % special handling for 0 flux
                 noflux = ',style=dotted';
-                flux = midEdgeWidth_;
+                flux = minFlux;
             else
                 noflux = '';
             end
-            fprintf(fid, '"%s" -> "%s" [arrowhead=none,penwidth=%g%s,splines=curved];\n', speciesNames{ind}, reactionNames{ir}, flux, noflux);
+            
+            % Scale flux to edge width
+            edgeWidth = (maxEdgeWidth_ - minEdgeWidth_) * flux + minEdgeWidth_;
+            
+            fprintf(fid, '"%s" -> "%s" [arrowhead=none,penwidth=%g%s,splines=curved];\n', speciesNames{ind}, reactionNames{ir}, edgeWidth, noflux);
         end
         
         % Products connected from box with arrow
@@ -222,13 +235,17 @@ for it = 1:nt
         for i = 1:length(products)
             ind = products(i);
             flux = fluxesScaled(ind,ir);
-            if flux <= 0 % special handling for 0 flux
+            if flux < minFlux % special handling for 0 flux
                 noflux = ',style=dotted';
-                flux = midEdgeWidth_;
+                flux = minFlux;
             else
                 noflux = '';
             end
-            fprintf(fid, '"%s" -> "%s" [penwidth=%g%s,splines=curved];\n', reactionNames{ir}, speciesNames{ind}, flux, noflux);
+            
+            % Scale flux to edge width
+            edgeWidth = (maxEdgeWidth_ - minEdgeWidth_) * flux + minEdgeWidth_;
+            
+            fprintf(fid, '"%s" -> "%s" [penwidth=%g%s,splines=curved];\n', reactionNames{ir}, speciesNames{ind}, edgeWidth, noflux);
         end
         
         % Catalytic species - add to reactants and product
